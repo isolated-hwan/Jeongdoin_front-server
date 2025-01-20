@@ -67,10 +67,10 @@ import 'swiper/css/navigation';
 const modules = [Autoplay, Pagination, Navigation];
 
 const bannerImages = ref([
-    { src: 'https://kosa-final-project-team-3.github.io/cdn/banner_1.png', alt: 'Banner 1' },
-    { src: 'https://kosa-final-project-team-3.github.io/cdn/banner_2.png', alt: 'Banner 2' },
-    { src: 'https://kosa-final-project-team-3.github.io/cdn/banner_3.png', alt: 'Banner 3' },
-    { src: 'https://kosa-final-project-team-3.github.io/cdn/banner_4.png', alt: 'Banner 4' },
+    { src: 'https://isolated-hwan.github.io/Jeongdoin_cdn-server/banner_1.png', alt: 'Banner 1' },
+    { src: 'https://isolated-hwan.github.io/Jeongdoin_cdn-server/banner_2.png', alt: 'Banner 2' },
+    { src: 'https://isolated-hwan.github.io/Jeongdoin_cdn-server/banner_3.png', alt: 'Banner 3' },
+    { src: 'https://isolated-hwan.github.io/Jeongdoin_cdn-server/banner_4.png', alt: 'Banner 4' },
 ]);
 
 const lessonTypes = ref([

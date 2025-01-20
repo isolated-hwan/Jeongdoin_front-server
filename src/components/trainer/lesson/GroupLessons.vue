@@ -4,12 +4,6 @@
             <h2>그룹 레슨</h2>
             <button @click="$emit('open-popup')" class="register-lesson-btn">레슨 등록하기</button>
         </div>
-        <RegisterLessonPopup
-            :is-visible="isRegisterPopupVisible"
-            @close="closeRegisterPopup"
-            @register="handleRegisterLesson"
-        />
-
         <div class="lesson-card-list">
             <div v-for="(lesson, index) in lessons" :key="index" class="lesson-card" @click="openLessonDetail(lesson)">
                 <div class="lesson-info">
@@ -18,7 +12,6 @@
                 </div>
             </div>
         </div>
-
         <LessonDetailPopup
             v-if="selectedLesson"
             :lesson="selectedLesson"
@@ -30,84 +23,44 @@
 </template>
 
 <script setup>
-import RegisterLessonPopup from './RegisterLessonPopup.vue';
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import LessonDetailPopup from './LessonDetailPopup.vue';
+import jwtAxios, { API_SERVER_HOST } from '../../../util/jwtUtil';
+import { useAuthStore } from '../../../stores/authStore';
 
-const isRegisterPopupVisible = ref(false);
+const host = API_SERVER_HOST;
+const authStore = useAuthStore();
 const selectedType = ref('그룹 레슨');
 const selectedLesson = ref(null);
+const lessons = ref([]);
 
-const lessons = ref([
-    {
-        id: 1,
-        title: '그룹 전신 운동 PT',
-        trainer: '박정환',
-        category: '헬스',
-        description: '초보자에게 적합한 전신 강화 그룹 트레이닝.',
-        price: 40000,
-        trainerProfile: ['국가대표 출신 강사', '스포츠지도사 자격증 보유'],
-        location: '서울 종로구 혜화로 20',
-        image: 'https://kosa-final-project-team-3.github.io/cdn/lesson_image1.jpg',
-        recruitmentStart: '2023-05-01',
-        recruitmentEnd: '2023-05-31',
-        currentParticipants: 3,
-        maxParticipants: 10,
-        reviews: [
-            '그룹 수업이라 부담 없이 참여할 수 있어요.',
-            '다른 참여자들과 함께 운동하니 더 열심히 하게 됩니다.',
-            '강사님의 설명이 명확해요.',
-        ],
-        ratings: {
-            전문성: 4,
-            친절: 5,
-            설명: 4,
-            시간엄수: 5,
-            열정: 4,
-        },
-    },
-    {
-        id: 2,
-        title: '그룹 요가 클래스',
-        trainer: '김지연',
-        category: '요가',
-        description: '모든 레벨에 적합한 그룹 요가 수업입니다.',
-        price: 35000,
-        trainerProfile: ['요가 강사 10년 경력', '국제 요가 자격증 보유'],
-        location: '서울 마포구 와우산로 29',
-        image: 'https://kosa-final-project-team-3.github.io/cdn/lesson_image1.jpg',
-        recruitmentStart: '2023-05-15',
-        recruitmentEnd: '2023-06-15',
-        currentParticipants: 5,
-        maxParticipants: 15,
-        reviews: [
-            '요가 초보자도 쉽게 따라할 수 있어요.',
-            '그룹 수업이라 즐거운 분위기에서 요가를 배울 수 있습니다.',
-            '강사님이 자세를 꼼꼼히 봐주셔서 좋아요.',
-        ],
-        ratings: {
-            전문성: 5,
-            친절: 4,
-            설명: 5,
-            시간엄수: 4,
-            열정: 5,
-        },
-    },
-]);
-
-const closeRegisterPopup = () => {
-    isRegisterPopupVisible.value = false;
-};
-const handleRegisterLesson = async (lessonData) => {
+const fetchLessons = async () => {
     try {
-        // TODO: API를 통해 새 레슨 등록
-        console.log('Registering new lesson:', lessonData);
-        // 성공 시 팝업 닫기
-        closeRegisterPopup();
+        const trainerId = authStore.id;
+        const response = await jwtAxios.get(`http://${host}/api/group-lesson/trainer/${trainerId}`);
+        lessons.value = response.data.map((lesson) => ({
+            lessonId: lesson.lessonId,
+            title: lesson.title,
+            trainer: lesson.trainerId,
+            category: lesson.category,
+            description: lesson.content,
+            price: lesson.price,
+            location: lesson.location,
+            recruitmentStart: lesson.startDate,
+            recruitmentEnd: lesson.startEnd,
+            maxParticipants: lesson.maxCnt,
+            done: lesson.done,
+            image: '',
+            type: '01',
+        }));
     } catch (error) {
-        console.error('Failed to register lesson:', error);
+        console.error('레슨 목록 조회 실패:', error);
     }
 };
+
+onMounted(() => {
+    fetchLessons();
+});
 
 function openLessonDetail(lesson) {
     selectedLesson.value = lesson;

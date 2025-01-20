@@ -29,7 +29,7 @@
                     </div>
                     <div class="form-group">
                         <label for="instructor">강사:</label>
-                        <label>{{ memberId }}</label>
+                        <label>{{ username }}</label>
                     </div>
                     <div class="form-group">
                         <label for="price">가격:</label>
@@ -80,11 +80,14 @@
 
 <script setup>
 import { reactive, ref, onMounted, computed } from 'vue';
-
+import jwtAxios, { API_SERVER_HOST } from '../../../util/jwtUtil';
 import { useAuthStore } from '../../../stores/authStore';
 
+const host = API_SERVER_HOST;
+const KAKAO_API_KEY = import.meta.env.VITE_KAKAO_API_KEY;
 const authStore = useAuthStore();
-const memberId = computed(() => authStore.username);
+const memberId = computed(() => authStore.id);
+const username = computed(() => authStore.username);
 
 const props = defineProps({
     isVisible: Boolean,
@@ -125,43 +128,100 @@ const lessonData = reactive({
     recruitmentStart: '',
     recruitmentEnd: '',
     capacity: 1,
+    lat: null,
+    lng: null,
+    done: false,
 });
 
 const close = () => {
     emit('close');
 };
 
-const registerLesson = () => {
-    const formData = new FormData();
-    for (const key in lessonData) {
-        if (isOnlineLesson.value) {
-            if (!['address', 'recruitmentStart', 'recruitmentEnd', 'capacity'].includes(key)) {
-                formData.append(key, lessonData[key]);
-            }
-        } else if (isGroupLesson.value) {
-            formData.append(key, lessonData[key]);
-        } else {
-            // 개인 레슨
-            if (!['recruitmentStart', 'recruitmentEnd', 'capacity'].includes(key)) {
-                formData.append(key, lessonData[key]);
-            }
+const registerLesson = async () => {
+    try {
+        let lessonId;
+        const mediaTypeCode = getMediaTypeCode(props.lessonType);
+
+        if (props.lessonType === 'personal') {
+            const requestData = {
+                trainerId: memberId.value,
+                title: lessonData.title,
+                price: parseInt(lessonData.price),
+                content: lessonData.details,
+                location: lessonData.address,
+                lat: lessonData.lat,
+                lng: lessonData.lng,
+            };
+
+            const response = await jwtAxios.post(`http://${host}/api/personal-lesson`, requestData);
+            lessonId = response.data.lessonId;
+        } else if (props.lessonType === 'group') {
+            const requestData = {
+                trainerId: memberId.value,
+                title: lessonData.title,
+                price: parseInt(lessonData.price),
+                content: lessonData.details,
+                location: lessonData.address,
+                lat: lessonData.lat,
+                lng: lessonData.lng,
+                startDate: lessonData.recruitmentStart,
+                startEnd: lessonData.recruitmentEnd,
+                maxCnt: lessonData.capacity,
+                done: lessonData.done,
+            };
+
+            const response = await jwtAxios.post(`http://${host}/api/group-lesson`, requestData);
+            lessonId = response.data.lessonId;
+        } else if (props.lessonType === 'online') {
+            const requestData = {
+                trainerId: memberId.value,
+                title: lessonData.title,
+                price: parseInt(lessonData.price),
+                content: lessonData.details,
+            };
+
+            const response = await jwtAxios.post(`http://${host}/api/online-lesson`, requestData);
+            lessonId = response.data.lessonId;
         }
+        // 이미지가 있다면 이미지 업로드
+        if (lessonData.image) {
+            const formData = new FormData();
+            formData.append('file', lessonData.image);
+            formData.append('mediaTypeCode', mediaTypeCode);
+            formData.append('resourceId', lessonId);
+            await jwtAxios.post(`http://${host}/api/file`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+        }
+
+        emit('register-success');
+
+        close();
+    } catch (error) {
+        console.error('레슨 등록 실패:', error);
+        console.error('에러 상세:', error.response?.data);
     }
-    emit('register', formData);
-    close(); // 등록 후 팝업 닫기
-    Object.keys(lessonData).forEach((key) => {
-        if (typeof lessonData[key] === 'string') {
-            lessonData[key] = '';
-        } else if (typeof lessonData[key] === 'number') {
-            lessonData[key] = key === 'capacity' ? 1 : 0;
-        }
-    });
-    imagePreview.value = null;
+};
+
+// 레슨 타입에 따른 미디어 타입 코드 반환
+const getMediaTypeCode = (lessonType) => {
+    switch (lessonType) {
+        case 'personal':
+            return '00';
+        case 'group':
+            return '01';
+        case 'online':
+            return '02';
+        case 'feedback':
+            return '03';
+    }
 };
 
 const openAddressSearch = () => {
     new window.daum.Postcode({
-        oncomplete: function (data) {
+        oncomplete: async function (data) {
             let addr = '';
             let extraAddr = '';
 
@@ -183,7 +243,29 @@ const openAddressSearch = () => {
                 }
             }
 
-            lessonData.address = addr + extraAddr;
+            const fullAddress = addr + extraAddr;
+            lessonData.address = fullAddress;
+
+            // 카카오 지오코딩 API 호출
+            try {
+                const response = await fetch(
+                    `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(fullAddress)}`,
+                    {
+                        headers: {
+                            Authorization: `KakaoAK ${KAKAO_API_KEY}`,
+                        },
+                    },
+                );
+                const result = await response.json();
+
+                if (result.documents && result.documents.length > 0) {
+                    lessonData.lat = parseFloat(result.documents[0].y); // 위도
+                    lessonData.lng = parseFloat(result.documents[0].x); // 경도
+                    console.log('위도:', lessonData.lat, '경도:', lessonData.lng);
+                }
+            } catch (error) {
+                console.error('좌표 변환 중 오류 발생:', error);
+            }
         },
     }).open();
 };

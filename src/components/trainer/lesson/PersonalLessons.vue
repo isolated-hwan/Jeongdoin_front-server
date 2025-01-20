@@ -26,129 +26,40 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import LessonDetailPopup from './LessonDetailPopup.vue';
+import jwtAxios, { API_SERVER_HOST } from '../../../util/jwtUtil';
+import { useAuthStore } from '../../../stores/authStore';
 
+const host = API_SERVER_HOST;
+const authStore = useAuthStore();
 const selectedType = ref('개인 레슨');
-const selectedLesson = ref(null); // 선택된 레슨
+const selectedLesson = ref(null);
+const lessons = ref([]);
 
-const lessons = ref([
-    {
-        title: '전신 운동 PT',
-        trainer: '박정환',
-        category: '헬스',
-        description: '초보자에게 적합한 전신 강화 트레이닝.',
-        price: 60000,
-        trainerProfile: ['국가대표 출신 강사', '스포츠지도사 자격증 보유'],
-        location: '서울 종로구 혜화로 20',
-        image: 'https://kosa-final-project-team-3.github.io/cdn/lesson_image1.jpg',
-        reviews: [
-            '친절하고 설명이 명확합니다.',
-            '운동 동작을 세심하게 지도해줘서 좋았어요.',
-            '시간 약속을 잘 지킵니다.',
-            '강의 준비가 철저해요.',
-        ],
-        ratings: {
-            전문성: 4,
-            친절: 5,
-            설명: 4,
-            시간엄수: 5,
-            열정: 4,
-        },
-    },
-    {
-        title: '가슴 운동 PT',
-        trainer: '강철희',
-        category: '헬스',
-        description: '초보자에게 적합한 전신 강화 트레이닝.',
-        price: 60000,
-        trainerProfile: ['국가대표 출신 강사', '스포츠지도사 자격증 보유'],
-        location: '서울 종로구 혜화로 20',
-        image: 'https://kosa-final-project-team-3.github.io/cdn/lesson_image1.jpg',
-        reviews: [
-            '친절하고 설명이 명확합니다.',
-            '운동 동작을 세심하게 지도해줘서 좋았어요.',
-            '시간 약속을 잘 지킵니다.',
-            '강의 준비가 철저해요.',
-        ],
-        ratings: {
-            전문성: 4,
-            친절: 5,
-            설명: 4,
-            시간엄수: 5,
-            열정: 4,
-        },
-    },
-    {
-        title: '어깨 운동 PT',
-        trainer: '강철희',
-        category: '헬스',
-        description: '초보자에게 적합한 전신 강화 트레이닝.',
-        price: 60000,
-        trainerProfile: ['국가대표 출신 강사', '스포츠지도사 자격증 보유'],
-        location: '서울 종로구 혜화로 20',
-        image: 'https://kosa-final-project-team-3.github.io/cdn/lesson_image1.jpg',
-        reviews: [
-            '친절하고 설명이 명확합니다.',
-            '운동 동작을 세심하게 지도해줘서 좋았어요.',
-            '시간 약속을 잘 지킵니다.',
-            '강의 준비가 철저해요.',
-        ],
-        ratings: {
-            전문성: 4,
-            친절: 5,
-            설명: 4,
-            시간엄수: 5,
-            열정: 4,
-        },
-    },
-    {
-        title: '등 운동 PT',
-        trainer: '강철희',
-        category: '헬스',
-        description: '초보자에게 적합한 전신 강화 트레이닝.',
-        price: 60000,
-        trainerProfile: ['국가대표 출신 강사', '스포츠지도사 자격증 보유'],
-        location: '서울 종로구 혜화로 20',
-        image: 'https://kosa-final-project-team-3.github.io/cdn/lesson_image1.jpg',
-        reviews: [
-            '친절하고 설명이 명확합니다.',
-            '운동 동작을 세심하게 지도해줘서 좋았어요.',
-            '시간 약속을 잘 지킵니다.',
-            '강의 준비가 철저해요.',
-        ],
-        ratings: {
-            전문성: 4,
-            친절: 5,
-            설명: 4,
-            시간엄수: 5,
-            열정: 4,
-        },
-    },
-    {
-        title: '하체 운동 PT',
-        trainer: '강철희',
-        category: '헬스',
-        description: '초보자에게 적합한 전신 강화 트레이닝.',
-        price: 60000,
-        trainerProfile: ['국가대표 출신 강사', '스포츠지도사 자격증 보유'],
-        location: '서울 종로구 혜화로 20',
-        image: 'https://kosa-final-project-team-3.github.io/cdn/lesson_image1.jpg',
-        reviews: [
-            '친절하고 설명이 명확합니다.',
-            '운동 동작을 세심하게 지도해줘서 좋았어요.',
-            '시간 약속을 잘 지킵니다.',
-            '강의 준비가 철저해요.',
-        ],
-        ratings: {
-            전문성: 4,
-            친절: 5,
-            설명: 4,
-            시간엄수: 5,
-            열정: 4,
-        },
-    },
-]);
+const fetchLessons = async () => {
+    try {
+        const trainerId = authStore.id;
+        const response = await jwtAxios.get(`http://${host}/api/personal-lesson/trainer/${trainerId}`);
+        lessons.value = response.data.map((lesson) => ({
+            lessonId: lesson.lessonId,
+            title: lesson.title,
+            trainer: lesson.trainerId,
+            category: lesson.category,
+            description: lesson.content,
+            price: lesson.price,
+            location: lesson.location,
+            image: '',
+            type: '00',
+        }));
+    } catch (error) {
+        console.error('레슨 목록 조회 실패:', error);
+    }
+};
+
+onMounted(() => {
+    fetchLessons();
+});
 
 function openLessonDetail(lesson) {
     selectedLesson.value = lesson;
@@ -157,17 +68,6 @@ function openLessonDetail(lesson) {
 function closeLessonDetail() {
     selectedLesson.value = null;
 }
-
-const handleRegisterLesson = async (lessonData) => {
-    try {
-        // TODO: API를 통해 새 레슨 등록
-        console.log('Registering new lesson:', lessonData);
-        // 성공 시 팝업 닫기
-        closeRegisterPopup();
-    } catch (error) {
-        console.error('Failed to register lesson:', error);
-    }
-};
 </script>
 
 <style scoped>

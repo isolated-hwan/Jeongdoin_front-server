@@ -5,12 +5,7 @@
             <button @click="$emit('open-popup')" class="register-lesson-btn">레슨 등록하기</button>
         </div>
         <div class="lesson-card-list">
-            <div
-                v-for="lesson in onlinePTLessons"
-                :key="lesson.id"
-                class="lesson-card"
-                @click="openLessonDetail(lesson)"
-            >
+            <div v-for="(lesson, index) in lessons" :key="index" class="lesson-card" @click="openLessonDetail(lesson)">
                 <div class="lesson-info">
                     <h4 class="lesson-title">{{ lesson.title }}</h4>
                     <p class="lesson-category">{{ lesson.category }}</p>
@@ -27,50 +22,39 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import LessonDetailPopup from './LessonDetailPopup.vue';
+import jwtAxios, { API_SERVER_HOST } from '../../../util/jwtUtil';
+import { useAuthStore } from '../../../stores/authStore';
 
+const host = API_SERVER_HOST;
+const authStore = useAuthStore();
 const selectedType = ref('온라인 PT');
 const selectedLesson = ref(null);
+const lessons = ref([]);
 
-const onlinePTLessons = ref([
-    {
-        id: 1,
-        title: '체중 감량 프로그램',
-        trainer: '강철희',
-        category: '헬스',
-        description: '초보자에게 적합한 전신 강화 트레이닝.',
-        price: 60000,
-        image: 'https://kosa-final-project-team-3.github.io/cdn/lesson_image1.jpg',
-    },
-    {
-        id: 2,
-        title: '근력 강화 트레이닝',
-        trainer: '박정환',
-        category: '헬스',
-        description: '근력 향상을 위한 온라인 PT 프로그램',
-        price: 65000,
-        image: 'https://kosa-final-project-team-3.github.io/cdn/lesson_image1.jpg',
-    },
-    {
-        id: 3,
-        title: '유연성 향상 요가',
-        trainer: '김지연',
-        category: '요가',
-        description: '유연성과 균형 감각을 향상시키는 온라인 요가 클래스',
-        price: 55000,
-        image: 'https://kosa-final-project-team-3.github.io/cdn/lesson_image1.jpg',
-    },
-    {
-        id: 4,
-        title: '홈 트레이닝 기초',
-        trainer: '이민수',
-        category: '홈트레이닝',
-        description: '집에서 할 수 있는 기초 운동 프로그램',
-        price: 50000,
-        image: 'https://kosa-final-project-team-3.github.io/cdn/lesson_image1.jpg',
-    },
-]);
+const fetchLessons = async () => {
+    try {
+        const trainerId = authStore.id;
+        const response = await jwtAxios.get(`http://${host}/api/online-lesson/trainer/${trainerId}`);
+        lessons.value = response.data.map((lesson) => ({
+            lessonId: lesson.lessonId,
+            title: lesson.title,
+            trainer: lesson.trainerId,
+            category: lesson.category,
+            description: lesson.content,
+            price: lesson.price,
+            image: '',
+            type: '02',
+        }));
+    } catch (error) {
+        console.error('레슨 목록 조회 실패:', error);
+    }
+};
+
+onMounted(() => {
+    fetchLessons();
+});
 
 function openLessonDetail(lesson) {
     selectedLesson.value = lesson;
@@ -79,17 +63,6 @@ function openLessonDetail(lesson) {
 function closeLessonDetail() {
     selectedLesson.value = null;
 }
-
-const handleRegisterLesson = async (lessonData) => {
-    try {
-        // TODO: API를 통해 새 레슨 등록
-        console.log('Registering new lesson:', lessonData);
-        // 성공 시 팝업 닫기
-        closeRegisterPopup();
-    } catch (error) {
-        console.error('Failed to register lesson:', error);
-    }
-};
 </script>
 
 <style scoped>

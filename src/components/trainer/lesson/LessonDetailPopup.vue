@@ -81,15 +81,37 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, ref } from 'vue';
+import { defineProps, defineEmits, ref, onMounted } from 'vue';
 import axios from 'axios';
+import jwtAxios, { API_SERVER_HOST } from '../../../util/jwtUtil';
 
+const host = API_SERVER_HOST;
 const props = defineProps({
     lesson: Object,
     selectedType: String,
 });
 
 const emit = defineEmits(['close', 'openInquiry', 'updateParticipants', 'closeLesson']);
+
+const fetchLessonsmedia = async () => {
+    try {
+        const mediaTypeCode = props.lesson.type;
+        const resourceId = props.lesson.lessonId;
+        const mediaResponse = await jwtAxios.get(`http://${host}/api/file/search`, {
+            params: {
+                mediaTypeCode: mediaTypeCode,
+                resourceId: resourceId,
+            },
+        });
+        props.lesson.image = mediaResponse.data[0].url;
+    } catch (error) {
+        console.error('레슨 목록 조회 또는 미디어 조회 실패:', error);
+    }
+};
+
+onMounted(() => {
+    fetchLessonsmedia();
+});
 
 // 임시 데이터 (실제로는 API에서 가져와야 함)
 const requests = ref([
@@ -118,10 +140,17 @@ const rejectRequest = (requestId) => {
     requests.value = requests.value.filter((request) => request.id !== requestId);
 };
 
-const closeLesson = () => {
+const closeLesson = async () => {
     if (confirm('정말로 이 그룹 레슨을 마감하시겠습니까?')) {
-        alert('그룹 레슨이 마감되었습니다.');
-        emit('closeLesson', props.lesson.id);
+        console.log(props.lesson.lessonId);
+        try {
+            await jwtAxios.patch(`http://${host}/api/group-lesson/${props.lesson.lessonId}/close`);
+            alert('그룹 레슨이 마감되었습니다.');
+            emit('closeLesson');
+        } catch (error) {
+            console.error('레슨 마감 실패:', error);
+            alert('레슨 마감에 실패했습니다.');
+        }
     }
 };
 

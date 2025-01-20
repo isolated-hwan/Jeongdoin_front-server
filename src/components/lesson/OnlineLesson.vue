@@ -35,116 +35,86 @@
         />
 
         <inquiry-form v-if="showInquiryForm" :lesson="inquiryLesson" @close="closeInquiryForm" />
-        <inquiry-form v-if="showInquiryForm" :lesson="inquiryLesson" @close="closeInquiryForm" />
     </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import LessonDetail from './LessonDetail.vue';
 import InquiryForm from './InquiryForm.vue';
 import SearchCompo from '../search/SearchCompo.vue';
+import jwtAxios, { API_SERVER_HOST } from '../../util/jwtUtil';
 
-const lessons = ref([
-    {
-        type: '온라인 레슨',
-        title: '전신 운동 PT',
-        trainer: '박정환',
-        category: '헬스',
-        description: '초보자에게 적합한 전신 강화 트레이닝.',
-        price: 60000,
-        trainerProfile: ['국가대표 출신 강사', '스포츠지도사 자격증 보유'],
-        image: 'https://kosa-final-project-team-3.github.io/cdn/lesson_image4.jpeg',
-        reviews: [
-            '자세를 잘 잡아줍니다!',
-            '운동 중간중간 자세 교정이 꼼꼼해서 좋습니다.',
-            '선생님 열정이 넘치고 친절해요!',
-        ],
-        ratings: {
-            전문성: 5,
-            친절: 5,
-            설명: 5,
-            시간엄수: 5,
-            열정: 5,
-            열정: 5,
-        },
-    },
-    {
-        type: '온라인 레슨',
-        title: '스우파 리더와 함께하는 댄스 기본 레슨',
-        trainer: '모니카',
-        category: '댄스',
-        description: '뚝딱이도 할 수 있는 댄스 기본 레슨. 모니카의 친절한 설명으로 댄스를 배워보세요!',
-        price: 40000,
-        image: 'https://kosa-final-project-team-3.github.io/cdn/of3.webp',
-        reviews: [
-            '선생님이 친절하고 쉽게 설명해줘서 좋아요.',
-            '전문적이여서 좋아요.',
-            '선생님 열정이 넘치고 친절해요!',
-        ],
-        ratings: {
-            전문성: 5,
-            친절: 4,
-            설명: 5,
-            시간엄수: 4,
-            열정: 5,
-        },
-    },
-    {
-        type: '온라인 레슨',
-        title: '세계 1위와 함께하는 왁킹 레슨',
-        trainer: '립제이',
-        category: '댄스',
-        description: '왁킹 중급자를 위한 레슨. 립제이와 함께 왁킹을 배워보세요!',
-        price: 40000,
-        image: 'https://kosa-final-project-team-3.github.io/cdn/of4.webp',
-        reviews: [
-            '선생님이 전문적이고 꼼꼼히 설명해줘서 좋아요.',
-            '선생님 멋있어요.',
-            '선생님 열정이 넘치고 친절해요!',
-        ],
-        ratings: {
-            전문성: 5,
-            친절: 4,
-            설명: 5,
-            시간엄수: 5,
-            열정: 5,
-        },
-    },
-    {
-        type: '온라인 레슨',
-        title: '피지컬 100의 심으뜸과 함께하는 운동 레슨',
-        trainer: '심으뜸',
-        category: '헬스',
-        description: '헬스가 처음이신 분들, 심으뜸과 함께하세요!',
-        price: 40000,
-        image: 'https://kosa-final-project-team-3.github.io/cdn/of6.jpeg',
-        reviews: [
-            '선생님이 전문적이고 꼼꼼히 설명해줘서 좋아요.',
-            '선생님 너무 친절해요.',
-            '선생님 열정이 넘치고 꼼꼼해요!',
-        ],
-        ratings: {
-            전문성: 5,
-            친절: 5,
-            설명: 5,
-            시간엄수: 5,
-            열정: 5,
-        },
-    },
-]);
-
-const categories = ref(['헬스', '요가', '필라테스', '수영', '댄스', '기타']);
-
+const host = API_SERVER_HOST;
 const selectedType = ref('온라인 레슨');
 const selectedLesson = ref(null); // 선택된 레슨
 const selectedCategory = ref('');
 const showInquiryForm = ref(false); // 문의하기 폼 상태
 const inquiryLesson = ref(null);
+const lessons = ref([]);
 
 const searchType = ref('total');
 const searchKeyword = ref(''); // 검색
 const sortType = ref('popular'); // 정렬
+
+// 레슨 목록 조회
+const fetchLessons = async () => {
+    try {
+        // 1. 레슨 목록 불러오기
+        const response = await jwtAxios.get(`http://${host}/api/online-lesson`);
+        const lessonsData = response.data;
+
+        // 2. 각 레슨의 이미지를 병렬로 요청
+        const lessonsWithImages = await Promise.all(
+            lessonsData.map(async (lesson) => {
+                try {
+                    // 각 레슨 ID로 이미지 요청
+                    const mediaResponse = await jwtAxios.get(`http://${host}/api/file/search`, {
+                        params: {
+                            mediaTypeCode: '02',
+                            resourceId: lesson.lessonId, // 레슨 ID
+                        },
+                    });
+
+                    // 이미지 데이터 가져오기
+                    const image = mediaResponse.data.length > 0 ? mediaResponse.data[0].url : '';
+
+                    // 레슨 데이터에 이미지 추가
+                    return {
+                        lessonId: lesson.lessonId,
+                        title: lesson.title,
+                        trainer: lesson.trainerName,
+                        category: lesson.category,
+                        description: lesson.content,
+                        price: lesson.price,
+                        image, // 이미지 URL 추가
+                        reviews: [], // 리뷰 기능 추가 전까지 빈 배열
+                        ratings: {
+                            전문성: 0,
+                            친절: 0,
+                            설명: 0,
+                            시간엄수: 0,
+                            열정: 0,
+                        },
+                    };
+                } catch (error) {
+                    console.error(`레슨 ID ${lesson.lessonId}의 이미지 로드 실패:`, error);
+                    return {
+                        ...lesson,
+                        image: '',
+                    };
+                }
+            }),
+        );
+        lessons.value = lessonsWithImages;
+    } catch (error) {
+        console.error('레슨 목록 조회 실패:', error);
+    }
+};
+
+onMounted(() => {
+    fetchLessons();
+});
 
 const filteredLessons = computed(() => {
     return lessons.value.filter((lesson) => {
