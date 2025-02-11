@@ -13,6 +13,7 @@
         "@mediapipe/tasks-vision": "^0.10.17",
         "axios": "^1.7.7",
         "chart.js": "^4.4.4",
+        "firebase": "^11.2.0",
         "leaflet": "^1.9.4",
         "pinia": "^2.2.4",
         "swiper": "^11.1.14",
