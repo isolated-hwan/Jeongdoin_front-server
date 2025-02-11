@@ -238,3 +238,6 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/node,vuejs,vue,visualstudiocode,macos,windows
+
+# firebase 
+**/firebaseConfig.js
