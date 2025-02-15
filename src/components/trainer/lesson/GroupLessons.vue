@@ -42,6 +42,7 @@ const fetchLessons = async () => {
             lessonId: lesson.lessonId,
             title: lesson.title,
             trainer: lesson.trainerId,
+            trainerName: lesson.trainerName,
             category: lesson.category,
             description: lesson.content,
             price: lesson.price,
@@ -50,6 +51,7 @@ const fetchLessons = async () => {
             recruitmentEnd: lesson.startEnd,
             maxParticipants: lesson.maxCnt,
             done: lesson.done,
+            process: lesson.process,
             image: '',
             type: '01',
         }));

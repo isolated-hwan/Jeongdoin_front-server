@@ -2,9 +2,9 @@
     <div class="inquiry-container">
         <div class="modal-content">
             <h2>문의하기</h2>
-            <p><strong>카테고리:</strong> {{ lesson.category }}</p>
-            <p><strong>강좌명:</strong> {{ lesson.title }}</p>
-            <p><strong>강사명:</strong> {{ lesson.trainer }}</p>
+            <p><strong>카테고리:</strong> {{ lesson.lesson.category }}</p>
+            <p><strong>강좌명:</strong> {{ lesson.lesson.title }}</p>
+            <p><strong>강사명:</strong> {{ lesson.lesson.trainer }}</p>
 
             <hr />
 
@@ -27,26 +27,42 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import jwtAxios, { API_SERVER_HOST } from '../../util/jwtUtil';
+import { useAuthStore } from '../../stores/authStore';
 
 const props = defineProps({
     lesson: Object,
 });
 
+const host = API_SERVER_HOST;
+const authStore = useAuthStore();
 const emit = defineEmits(['close']);
-
+const memberId = computed(() => authStore.id);
+const memberName = computed(() => authStore.username);
 const applicantName = ref('');
 const applicantContact = ref('');
 const inquiryMessage = ref('레슨 신청합니다.');
 
-const inquirySubmit = () => {
-    if (!applicantName.value || !applicantContact.value) {
-        alert('이름과 연락처를 입력해주세요.');
+const inquirySubmit = async () => {
+    if (!inquiryMessage.value) {
+        alert('문의 내용을 입력해주세요.');
         return;
     }
-    alert(`${applicantName.value}님, 문의가 접수되었습니다. (레슨: ${props.lesson.title})`);
-    // 서버 처리
-    emit('close');
+
+    try {
+        const response = await jwtAxios.post(`http://${host}/api/apply-lesson`, {
+            lessonId: props.lesson.lesson.lessonId,
+            lessonCategoryCode: props.lesson.lesson.type,
+            memberId: memberId.value,
+            memberContent: inquiryMessage.value,
+        });
+        alert('레슨 신청이 완료되었습니다.');
+        emit('close');
+    } catch (error) {
+        console.error('레슨 신청 실패:', error);
+        alert('레슨 신청에 실패했습니다. 다시 시도해주세요.');
+    }
 };
 </script>
 

@@ -45,10 +45,12 @@ const fetchLessons = async () => {
             lessonId: lesson.lessonId,
             title: lesson.title,
             trainer: lesson.trainerId,
+            trainerName: lesson.trainerName,
             category: lesson.category,
             description: lesson.content,
             price: lesson.price,
             location: lesson.location,
+            process: lesson.process,
             image: '',
             type: '00',
         }));

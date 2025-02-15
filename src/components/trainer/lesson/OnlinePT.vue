@@ -44,6 +44,7 @@ const fetchLessons = async () => {
             category: lesson.category,
             description: lesson.content,
             price: lesson.price,
+            process: lesson.process,
             image: '',
             type: '02',
         }));

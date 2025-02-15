@@ -70,7 +70,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'openInquiry']);
 
 const handleInquiry = () => {
-    emit('openInquiry', props.lesson);
+    emit('openInquiry', { lesson: props.lesson, selectedType: props.selectedType });
     emit('close');
 };
 </script>

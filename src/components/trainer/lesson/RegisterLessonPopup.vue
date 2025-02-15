@@ -131,6 +131,7 @@ const lessonData = reactive({
     lat: null,
     lng: null,
     done: false,
+    process: 'IN_PROGRESS',
 });
 
 const close = () => {
@@ -151,6 +152,7 @@ const registerLesson = async () => {
                 location: lessonData.address,
                 lat: lessonData.lat,
                 lng: lessonData.lng,
+                process: lessonData.process,
             };
 
             const response = await jwtAxios.post(`http://${host}/api/personal-lesson`, requestData);
@@ -168,6 +170,7 @@ const registerLesson = async () => {
                 startEnd: lessonData.recruitmentEnd,
                 maxCnt: lessonData.capacity,
                 done: lessonData.done,
+                process: lessonData.process,
             };
 
             const response = await jwtAxios.post(`http://${host}/api/group-lesson`, requestData);
@@ -178,6 +181,7 @@ const registerLesson = async () => {
                 title: lessonData.title,
                 price: parseInt(lessonData.price),
                 content: lessonData.details,
+                process: lessonData.process,
             };
 
             const response = await jwtAxios.post(`http://${host}/api/online-lesson`, requestData);

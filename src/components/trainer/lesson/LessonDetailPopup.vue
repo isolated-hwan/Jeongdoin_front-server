@@ -12,8 +12,9 @@
                     </div>
                     <div class="lesson-details">
                         <p><strong>종목:</strong> {{ lesson.category }}</p>
-                        <p><strong>강사:</strong> {{ lesson.trainer }}</p>
+                        <p><strong>강사:</strong> {{ lesson.trainerName }}</p>
                         <p><strong>가격:</strong> {{ lesson.price }}원</p>
+                        <p><strong>진행:</strong> {{ lesson.process }}</p>
                     </div>
                 </div>
             </div>
@@ -42,8 +43,8 @@
                     <li v-for="request in requests" :key="request.id" class="request-item">
                         <span class="requester-name">{{ request.name }}</span>
                         <div class="request-actions">
-                            <button @click="acceptRequest(request)" class="accept-btn">수락</button>
-                            <button @click="rejectRequest(request.id)" class="reject-btn">거절</button>
+                            <button @click="openAcceptDialog(request)" class="accept-btn">수락</button>
+                            <button @click="rejectRequest(request)" class="reject-btn">거절</button>
                         </div>
                     </li>
                 </ul>
@@ -55,7 +56,13 @@
                 <h3>참여 리스트</h3>
                 <ul>
                     <li v-for="participant in participants" :key="participant.id" class="participant-item">
-                        <span class="participant-name">{{ participant.name }}</span>
+                        <div class="participant-info">
+                            <span class="participant-name">{{ participant.name }}</span>
+                            <span class="participant-details">
+                                (횟수: {{ participant.count }}회 | 기간: {{ participant.startDate }} ~
+                                {{ participant.endDate }})
+                            </span>
+                        </div>
                         <template v-if="selectedType === '온라인 PT'">
                             <span v-if="participant.roomUrl" class="room-url">
                                 <a :href="participant.roomUrl" target="_blank">{{ participant.roomUrl }}</a>
@@ -78,20 +85,39 @@
             </div>
         </div>
     </div>
+    <accept-dialog
+        v-if="showAcceptDialog"
+        :request="selectedRequest"
+        :lessonType="selectedType"
+        :trainerId="lesson.trainerId"
+        @close="closeAcceptDialog"
+        @submit="handleAcceptSubmit"
+    />
+    <reject-dialog
+        v-if="showRejectDialog"
+        :request="selectedRequest"
+        @close="closeRejectDialog"
+        @submit="handleRejectSubmit"
+    />
 </template>
 
 <script setup>
 import { defineProps, defineEmits, ref, onMounted } from 'vue';
+import AcceptDialog from './AcceptDialog.vue';
+import RejectDialog from './RejectDialog.vue';
 import axios from 'axios';
 import jwtAxios, { API_SERVER_HOST } from '../../../util/jwtUtil';
 
 const host = API_SERVER_HOST;
+const showAcceptDialog = ref(false);
+const selectedRequest = ref(null);
 const props = defineProps({
     lesson: Object,
     selectedType: String,
 });
 
 const emit = defineEmits(['close', 'openInquiry', 'updateParticipants', 'closeLesson']);
+const requests = ref([]);
 
 const fetchLessonsmedia = async () => {
     try {
@@ -111,33 +137,124 @@ const fetchLessonsmedia = async () => {
 
 onMounted(() => {
     fetchLessonsmedia();
+    fetchRequests();
+    fetchParticipants();
 });
 
-// 임시 데이터 (실제로는 API에서 가져와야 함)
-const requests = ref([
-    { id: 1, name: '김철수' },
-    { id: 2, name: '이영희' },
-    { id: 3, name: '박지성' },
-    { id: 4, name: '이다영' },
-]);
-
-const participants = ref([
-    { id: 1, name: '홍길동', roomUrl: null },
-    { id: 2, name: '장보고', roomUrl: null },
-]);
-
-const acceptRequest = (request) => {
-    alert(`${request.name} 님의 요청 수락됨`);
-    participants.value.push(request);
-    requests.value = requests.value.filter((r) => r.id !== request.id);
-    if (props.selectedType === '그룹 레슨') {
-        emit('updateParticipants', props.lesson.id, 1);
+// 신청 목록 조회
+const fetchRequests = async () => {
+    try {
+        const response = await jwtAxios.get(`http://${host}/api/apply-lesson/pending`, {
+            params: {
+                lessonId: props.lesson.lessonId,
+                lessonCategoryCode: props.lesson.type,
+            },
+        });
+        requests.value = response.data.map((request) => ({
+            id: request.applyId,
+            memberId: request.memberId,
+            name: request.memberName,
+            content: request.memberContent,
+            phone: request.memberPhone,
+        }));
+    } catch (error) {
+        console.error('신청 목록 조회 실패:', error);
     }
 };
 
-const rejectRequest = (requestId) => {
-    alert(`${requestId} 님의 요청이 거절됨`);
-    requests.value = requests.value.filter((request) => request.id !== requestId);
+const participants = ref([]);
+
+// 참여자 목록 조회
+const fetchParticipants = async () => {
+    try {
+        const response = await jwtAxios.get(`http://${host}/api/contract/participants`, {
+            params: {
+                lessonId: props.lesson.lessonId,
+                lessonCategoryCode: props.lesson.type,
+            },
+        });
+        participants.value = response.data.map((participant) => ({
+            id: participant.memberId,
+            name: participant.memberName,
+            phone: participant.memberPhone,
+            count: participant.count,
+            startDate: participant.startDate,
+            endDate: participant.endDate,
+            status: participant.status,
+        }));
+    } catch (error) {
+        console.error('참여자 목록 조회 실패:', error);
+    }
+};
+
+const handleAcceptSubmit = async (formData) => {
+    try {
+        const memberId = selectedRequest.value.memberId;
+        await jwtAxios.post(`http://${host}/api/contract`, {
+            applyId: selectedRequest.value.id,
+            lessonId: props.lesson.lessonId,
+            lessonCategoryCode: props.lesson.type,
+            trainerId: props.lesson.trainer,
+            count: parseInt(formData.count),
+            startDate: formData.startDate,
+            endDate: formData.endDate,
+            memberId: memberId,
+        });
+
+        alert(`${selectedRequest.value.name} 님의 레슨이 승인되었습니다.`);
+        closeAcceptDialog();
+        await fetchRequests();
+        await fetchParticipants();
+        console.log();
+    } catch (error) {
+        console.error('계약 생성 실패:', error);
+        alert('계약 생성에 실패했습니다.');
+    }
+};
+const openAcceptDialog = (request) => {
+    selectedRequest.value = request;
+    showAcceptDialog.value = true;
+};
+
+const closeAcceptDialog = () => {
+    showAcceptDialog.value = false;
+    selectedRequest.value = null;
+};
+
+const showRejectDialog = ref(false);
+
+// 거절 다이얼로그 열기
+const openRejectDialog = (request) => {
+    selectedRequest.value = request;
+    showRejectDialog.value = true;
+};
+
+// 거절 다이얼로그 닫기
+const closeRejectDialog = () => {
+    showRejectDialog.value = false;
+    selectedRequest.value = null;
+};
+
+// 거절 처리
+const handleRejectSubmit = async (rejectReason) => {
+    try {
+        await jwtAxios.patch(`http://${host}/api/apply-lesson/${selectedRequest.value.id}/reject`, {
+            trainerContent: rejectReason,
+        });
+
+        alert(`${selectedRequest.value.name} 님의 레슨 신청이 거절되었습니다.`);
+        closeRejectDialog();
+        await fetchRequests();
+    } catch (error) {
+        console.error('신청 거절 실패:', error);
+        alert('신청 거절에 실패했습니다.');
+    }
+};
+
+// rejectRequest 함수 수정
+const rejectRequest = (request) => {
+    selectedRequest.value = request;
+    openRejectDialog(request);
 };
 
 const closeLesson = async () => {

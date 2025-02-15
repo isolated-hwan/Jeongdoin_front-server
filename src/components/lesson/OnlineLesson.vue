@@ -3,6 +3,7 @@
         <search-compo @search="handleSearch" @sort="handleSort" />
 
         <div class="lesson-card-list">
+            <div v-if="sortedLessons.length === 0" class="no-lessons-message">레슨이 없습니다.</div>
             <div
                 v-for="(lesson, index) in sortedLessons"
                 :key="index"
@@ -87,6 +88,8 @@ const fetchLessons = async () => {
                         category: lesson.category,
                         description: lesson.content,
                         price: lesson.price,
+                        process: lesson.process,
+                        type: '02',
                         image, // 이미지 URL 추가
                         reviews: [], // 리뷰 기능 추가 전까지 빈 배열
                         ratings: {
@@ -301,5 +304,12 @@ function closeInquiryForm() {
 
 .join-button:hover {
     background-color: #d32f2f;
+}
+
+.no-lessons-message {
+    text-align: center;
+    font-size: 1.2rem;
+    color: #888;
+    margin-top: 20px;
 }
 </style>
